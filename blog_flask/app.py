@@ -1,8 +1,8 @@
-from flask import Flask , render_template , request , flash , redirect
+from flask import Flask , render_template , request , flash , redirect , url_for
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from werkzeug.security import generate_password_hash , check_password_hash
-from flask_login import LoginManager
+from flask_login import LoginManager , login_user , logout_user , login_required , current_user , UserMixin
 
 app = Flask(__name__,template_folder="templates")
 
@@ -18,7 +18,7 @@ login_manager.login_view = "login"
 login_manager.login_message = "برای دسترسی به این صفحه باید به حساب کاربری خود وارد شوید"
 
 # id - name/username - email - password
-class User(db.Model):
+class User(UserMixin, db.Model):
     id = db.Column(db.Integer , primary_key=True)
     username = db.Column(db.String(80) , unique = True , nullable=False)
     email = db.Column(db.String(120) , unique =  True , nullable=False)
@@ -67,13 +67,24 @@ def register():
         user.set_password(password)
         db.session.add(user)
         db.session.commit()
+        flash("ثبت نام شما با موفقیت انجام شد")
+        return redirect(url_for("login"))
     
-        return render_template("register.html")
+    return render_template("register.html")
     
 @app.route('/login' , methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        pass
+        username = request.form["username"]
+        password = request.form["password"]
+        
+        user = User.query.filter_by(username=username).first()
+        if user and user.check_password(password):
+            login_user(user)
+            flash("ورود شما با موفقیت انجام شد")
+            # redirect dashboard
+        else:
+            flash("نام کاربری یا رمزعبور اشتباه است")
     return render_template("login.html")
 
 def create_tables():
