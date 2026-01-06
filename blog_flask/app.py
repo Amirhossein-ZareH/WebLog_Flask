@@ -11,7 +11,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///blog.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATION"] = False
 
 db = SQLAlchemy(app)
-
+#1
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
@@ -30,7 +30,7 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
     
-
+#2
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -47,7 +47,7 @@ class Post(db.Model):
 def index():
     posts = Post.query.all()
     return render_template("index.html", posts = posts)
-
+#3
 @app.route('/register' , methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -71,7 +71,14 @@ def register():
         return redirect(url_for("login"))
     
     return render_template("register.html")
-    
+
+#5
+@app.route("/dashboard")
+@login_required
+def dashboard():
+    return render_template("dashboard.html" , username=current_user.username)
+
+#4
 @app.route('/login' , methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -82,10 +89,17 @@ def login():
         if user and user.check_password(password):
             login_user(user)
             flash("ورود شما با موفقیت انجام شد")
-            # redirect dashboard
+            return redirect(url_for("dashboard"))
         else:
             flash("نام کاربری یا رمزعبور اشتباه است")
     return render_template("login.html")
+
+#6
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for("index"))
 
 def create_tables():
     with app.app_context():
