@@ -7,15 +7,6 @@
 </head>
 <body>
     <h1>ثبت نام</h1>
-    {% with message = get_flash_messages() %}
-    {% if messages %}
-        <ul class="flashes">
-            {% for message in messages %}
-            <li>{{message}}</li>
-            {% endfor %}
-        </ul>
-    {% endif %}
-    {% endwith %}
     <form method="post">
         <label>نام کاربری</label>
         <input type="text" name="username" required><br><br><br>
