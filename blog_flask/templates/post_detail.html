@@ -1,0 +1,728 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.title }} - وبلاگ من{% endblock %}
+
+{% block content %}
+<div class="post-detail">
+    <!-- پست اصلی -->
+    <article class="card main-post">
+        <div class="post-header-detail">
+            <div class="post-title-section">
+                <h1 class="post-title-main">{{ post.title }}</h1>
+                <div class="post-author-info">
+                    <img src="https://ui-avatars.com/api/?name={{ post.author.username }}&background=random" 
+                         alt="{{ post.author.username }}" class="author-avatar">
+                    <div class="author-details">
+                        <span class="author-name">{{ post.author.username }}</span>
+                        <span class="post-date">
+                            <i class="far fa-calendar"></i>
+                            {{ post.created_at.strftime('%Y/%m/%d - ساعت %H:%M') }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            {% if current_user.is_authenticated and post.author == current_user %}
+            <div class="post-actions-float">
+                <a href="{{ url_for('edit_post', id=post.id) }}" 
+                   class="btn btn-warning btn-small">
+                    <i class="fas fa-edit"></i> ویرایش
+                </a>
+                <a href="{{ url_for('delete_post', id=post.id) }}" 
+                   class="btn btn-danger btn-small"
+                   onclick="return confirm('آیا از حذف این پست مطمئن هستید؟')">
+                    <i class="fas fa-trash"></i> حذف
+                </a>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="post-content-main">
+            {{ post.content|safe }}
+        </div>
+        
+        <div class="post-footer">
+            <div class="post-tags">
+                <span class="tag">
+                    <i class="fas fa-hashtag"></i> وبلاگ
+                </span>
+                <span class="tag">
+                    <i class="fas fa-hashtag"></i> پایتون
+                </span>
+                <span class="tag">
+                    <i class="fas fa-hashtag"></i> Flask
+                </span>
+            </div>
+            
+            <div class="share-buttons">
+                <span class="share-label">اشتراک گذاری:</span>
+                <button class="share-btn" onclick="shareOnTwitter()">
+                    <i class="fab fa-twitter"></i>
+                </button>
+                <button class="share-btn" onclick="shareOnTelegram()">
+                    <i class="fab fa-telegram"></i>
+                </button>
+                <button class="share-btn" onclick="copyLink()">
+                    <i class="fas fa-link"></i>
+                </button>
+            </div>
+        </div>
+    </article>
+    
+    <!-- بخش نظرات -->
+    <div class="comment-section" id="comments">
+        <div class="comment-header">
+            <h2>
+                <i class="far fa-comments"></i>
+                نظرات ({{ comments|length }})
+            </h2>
+            <button class="btn btn-primary" onclick="scrollToCommentForm()">
+                <i class="fas fa-plus"></i> افزودن نظر
+            </button>
+        </div>
+        
+        {% if comments %}
+        <div class="comments-list">
+            {% for comment in comments %}
+            <div class="comment-card" id="comment-{{ comment.id }}">
+                <div class="comment-header">
+                    <div class="comment-author">
+                        <img src="https://ui-avatars.com/api/?name={{ comment.author.username }}&background=random" 
+                             alt="{{ comment.author.username }}" class="comment-avatar">
+                        <div>
+                            <span class="comment-author-name">{{ comment.author.username }}</span>
+                            <span class="comment-date">
+                                <i class="far fa-clock"></i>
+                                {{ comment.created_at.strftime('%Y/%m/%d %H:%M') }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    {% if current_user.is_authenticated and comment.author == current_user %}
+                    <a href="{{ url_for('delete_comment', id=comment.id) }}" 
+                       class="btn btn-danger btn-tiny"
+                       onclick="return confirm('آیا از حذف این نظر مطمئن هستید؟')">
+                        <i class="fas fa-trash"></i>
+                    </a>
+                    {% endif %}
+                </div>
+                
+                <div class="comment-content">
+                    {{ comment.content }}
+                </div>
+                
+                <div class="comment-actions">
+                    <button class="btn-like" onclick="likeComment({{ comment.id }})">
+                        <i class="far fa-thumbs-up"></i> پسندیدم
+                    </button>
+                    <button class="btn-reply" onclick="replyToComment({{ comment.id }}, '{{ comment.author.username }}')">
+                        <i class="fas fa-reply"></i> پاسخ
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="no-comments">
+            <i class="far fa-comment-slash fa-3x"></i>
+            <h3>هنوز نظری ثبت نشده است</h3>
+            <p>اولین نفری باشید که نظر می‌دهد!</p>
+        </div>
+        {% endif %}
+        
+        <!-- فرم ارسال نظر -->
+        {% if current_user.is_authenticated %}
+        <div class="comment-form-card" id="commentForm">
+            <h3>
+                <i class="fas fa-pen"></i> ثبت نظر جدید
+            </h3>
+            <form method="POST">
+                <div class="form-group">
+                    <textarea name="comment" id="commentText" 
+                              class="form-control comment-textarea"
+                              rows="5"
+                              placeholder="نظر خود را اینجا بنویسید..."
+                              required></textarea>
+                </div>
+                
+                <div class="form-footer">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-paper-plane"></i> ارسال نظر
+                    </button>
+                    <span class="char-count-comment">
+                        <span id="commentCharCount">0</span>/1000 کاراکتر
+                    </span>
+                </div>
+            </form>
+        </div>
+        {% else %}
+        <div class="login-to-comment">
+            <i class="fas fa-lock"></i>
+            <p>برای ثبت نظر باید وارد حساب کاربری خود شوید</p>
+            <a href="{{ url_for('login') }}" class="btn btn-primary">
+                <i class="fas fa-sign-in-alt"></i> ورود به حساب
+            </a>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- پست‌های مرتبط -->
+    <div class="related-posts">
+        <h2><i class="fas fa-link"></i> پست‌های مرتبط</h2>
+        <div class="related-grid">
+            {% for related_post in posts[-3:] if related_post.id != post.id %}
+            <a href="{{ url_for('post_detail', id=related_post.id) }}" class="related-card">
+                <h4>{{ related_post.title }}</h4>
+                <p>{{ related_post.content[:100] }}...</p>
+                <span class="related-date">
+                    <i class="far fa-calendar"></i>
+                    {{ related_post.created_at.strftime('%Y/%m/%d') }}
+                </span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .post-detail {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+    
+    .main-post {
+        margin-bottom: 40px;
+        animation: fadeInUp 0.6s ease;
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .post-header-detail {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+    
+    .post-title-main {
+        color: var(--primary);
+        font-size: 2.2rem;
+        margin-bottom: 15px;
+        line-height: 1.3;
+    }
+    
+    .post-author-info {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .author-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        border: 3px solid var(--primary);
+    }
+    
+    .author-details {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .author-name {
+        font-weight: bold;
+        color: var(--dark);
+        font-size: 1.1rem;
+    }
+    
+    .post-date {
+        color: var(--gray);
+        font-size: 0.9rem;
+    }
+    
+    .post-actions-float {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .post-content-main {
+        font-size: 1.1rem;
+        line-height: 1.9;
+        margin: 30px 0;
+        padding: 0 10px;
+    }
+    
+    .post-content-main p {
+        margin-bottom: 20px;
+    }
+    
+    .post-content-main h2, .post-content-main h3 {
+        color: var(--primary);
+        margin: 25px 0 15px;
+    }
+    
+    .post-content-main code {
+        background: #f8f9fa;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-family: monospace;
+        color: var(--danger);
+    }
+    
+    .post-content-main pre {
+        background: #2d2d2d;
+        color: #f8f8f2;
+        padding: 15px;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 20px 0;
+    }
+    
+    .post-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 0;
+        border-top: 2px solid #f0f0f0;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+    
+    .post-tags {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
+    .tag {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        color: white;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    
+    .share-buttons {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .share-label {
+        color: var(--gray);
+        font-weight: bold;
+    }
+    
+    .share-btn {
+        background: white;
+        border: 2px solid #ddd;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-size: 1.1rem;
+    }
+    
+    .share-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    .share-btn:nth-child(2):hover {
+        background: #1DA1F2;
+        color: white;
+        border-color: #1DA1F2;
+    }
+    
+    .share-btn:nth-child(3):hover {
+        background: #0088cc;
+        color: white;
+        border-color: #0088cc;
+    }
+    
+    .share-btn:nth-child(4):hover {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+    
+    /* بخش نظرات */
+    .comment-section {
+        margin: 50px 0;
+    }
+    
+    .comment-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+    
+    .comment-header h2 {
+        color: var(--primary);
+        font-size: 1.8rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .comments-list {
+        display: flex;
+        flex-direction: column;
+        gap: 25px;
+        margin-bottom: 40px;
+    }
+    
+    .comment-card {
+        background: white;
+        border-radius: var(--border-radius);
+        padding: 25px;
+        box-shadow: var(--box-shadow);
+        border-right: 4px solid var(--primary);
+        transition: transform 0.3s;
+    }
+    
+    .comment-card:hover {
+        transform: translateX(5px);
+    }
+    
+    .comment-card .comment-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .comment-author {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .comment-avatar {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        border: 2px solid var(--primary);
+    }
+    
+    .comment-author-name {
+        font-weight: bold;
+        color: var(--dark);
+        font-size: 1.1rem;
+    }
+    
+    .comment-date {
+        color: var(--gray);
+        font-size: 0.85rem;
+    }
+    
+    .btn-tiny {
+        padding: 5px 10px;
+        font-size: 0.8rem;
+    }
+    
+    .comment-content {
+        line-height: 1.7;
+        margin: 20px 0;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+    
+    .comment-actions {
+        display: flex;
+        gap: 15px;
+    }
+    
+    .btn-like, .btn-reply {
+        background: none;
+        border: none;
+        color: var(--gray);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        transition: color 0.3s;
+        padding: 8px 15px;
+        border-radius: 20px;
+    }
+    
+    .btn-like:hover {
+        color: var(--danger);
+        background: rgba(247, 37, 133, 0.1);
+    }
+    
+    .btn-reply:hover {
+        color: var(--primary);
+        background: rgba(67, 97, 238, 0.1);
+    }
+    
+    .no-comments {
+        text-align: center;
+        padding: 50px 20px;
+        color: var(--gray);
+    }
+    
+    .no-comments i {
+        margin-bottom: 20px;
+        color: #ddd;
+    }
+    
+    .no-comments h3 {
+        margin-bottom: 10px;
+        color: var(--dark);
+    }
+    
+    .comment-form-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 30px;
+        border-radius: var(--border-radius);
+        margin-top: 40px;
+        border: 2px dashed var(--primary);
+    }
+    
+    .comment-form-card h3 {
+        color: var(--primary);
+        margin-bottom: 25px;
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .comment-textarea {
+        font-size: 1rem;
+        line-height: 1.6;
+    }
+    
+    .form-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 20px;
+    }
+    
+    .char-count-comment {
+        color: var(--gray);
+        font-size: 0.9rem;
+    }
+    
+    .login-to-comment {
+        text-align: center;
+        padding: 40px 20px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: var(--border-radius);
+        margin-top: 30px;
+    }
+    
+    .login-to-comment i {
+        font-size: 3rem;
+        color: var(--primary);
+        margin-bottom: 20px;
+    }
+    
+    .login-to-comment p {
+        margin-bottom: 25px;
+        color: var(--dark);
+        font-size: 1.1rem;
+    }
+    
+    /* پست‌های مرتبط */
+    .related-posts {
+        margin-top: 60px;
+        padding-top: 30px;
+        border-top: 2px solid #f0f0f0;
+    }
+    
+    .related-posts h2 {
+        color: var(--primary);
+        font-size: 1.8rem;
+        margin-bottom: 25px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .related-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 25px;
+    }
+    
+    .related-card {
+        background: white;
+        padding: 25px;
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+        text-decoration: none;
+        color: inherit;
+        transition: all 0.3s;
+        border: 2px solid transparent;
+    }
+    
+    .related-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--primary);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    }
+    
+    .related-card h4 {
+        color: var(--primary);
+        margin-bottom: 15px;
+        font-size: 1.2rem;
+    }
+    
+    .related-card p {
+        color: var(--gray);
+        margin-bottom: 15px;
+        line-height: 1.6;
+    }
+    
+    .related-date {
+        color: var(--dark);
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    
+    @media (max-width: 768px) {
+        .post-header-detail {
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .post-title-main {
+            font-size: 1.8rem;
+        }
+        
+        .post-footer {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .comment-header {
+            flex-direction: column;
+            gap: 15px;
+            align-items: flex-start;
+        }
+        
+        .comment-form-card {
+            padding: 20px;
+        }
+        
+        .form-footer {
+            flex-direction: column;
+            gap: 15px;
+            align-items: flex-start;
+        }
+        
+        .related-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<script>
+    // شمارش کاراکترهای نظر
+    const commentTextarea = document.getElementById('commentText');
+    const commentCharCount = document.getElementById('commentCharCount');
+    
+    if (commentTextarea) {
+        commentTextarea.addEventListener('input', function() {
+            commentCharCount.textContent = this.value.length;
+            
+            if (this.value.length > 1000) {
+                commentCharCount.style.color = 'var(--danger)';
+                this.style.borderColor = 'var(--danger)';
+            } else if (this.value.length > 800) {
+                commentCharCount.style.color = 'var(--warning)';
+                this.style.borderColor = 'var(--warning)';
+            } else {
+                commentCharCount.style.color = 'var(--gray)';
+                this.style.borderColor = '#e0e0e0';
+            }
+        });
+    }
+    
+    // اشتراک گذاری
+    function shareOnTwitter() {
+        const url = window.location.href;
+        const text = "{{ post.title }}";
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
+    }
+    
+    function shareOnTelegram() {
+        const url = window.location.href;
+        const text = "{{ post.title }}";
+        window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, '_blank');
+    }
+    
+    function copyLink() {
+        const url = window.location.href;
+        navigator.clipboard.writeText(url).then(() => {
+            alert('لینک کپی شد!');
+        });
+    }
+    
+    // اسکرول به فرم نظر
+    function scrollToCommentForm() {
+        const form = document.getElementById('commentForm');
+        if (form) {
+            form.scrollIntoView({ behavior: 'smooth' });
+            commentTextarea.focus();
+        }
+    }
+    
+    // پسندیدن نظر
+    function likeComment(commentId) {
+        alert(`نظر شماره ${commentId} پسندیده شد!`);
+        // در اینجا می‌توانید درخواست AJAX برای ذخیره لایک ارسال کنید
+    }
+    
+    // پاسخ به نظر
+    function replyToComment(commentId, username) {
+        if (!commentTextarea) {
+            alert('برای پاسخ دادن باید وارد شوید');
+            return;
+        }
+        
+        commentTextarea.value = `@${username} `;
+        commentTextarea.focus();
+        scrollToCommentForm();
+    }
+    
+    // تغییر رنگ پس زمینه برای پست‌های نویسنده
+    document.addEventListener('DOMContentLoaded', function() {
+        const currentAuthor = "{{ post.author.username }}";
+        const currentUser = "{{ current_user.username|default('') }}";
+        
+        if (currentAuthor === currentUser) {
+            document.querySelector('.main-post').style.border = '3px solid var(--success)';
+        }
+    });
+</script>
+{% endblock %}

@@ -1,22 +1,47 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ثبت نام</title>
-</head>
-<body>
-    <h1>ثبت نام</h1>
-    <form method="post">
-        <label>نام کاربری</label>
-        <input type="text" name="username" required><br><br><br>
-        <label>ایمیل</label>
-        <input type="email" name="email" required><br><br><br>
-        <label>رمز عبور</label>
-        <input type="password" name="password" required><br><br><br>
+{% extends "base.html" %}
 
-        <button type="submit">ثبت نام</button>
-    </form>
-    <p>تمرین امروز:یه دکمه لاگ اوت و بک اند دکمه را برای جلسه بعدی حاضر کنید</p>
-</body>
-</html>
+{% block title %}ثبت نام - وبلاگ من{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h2>ایجاد حساب کاربری</h2>
+        
+        <form method="POST">
+            <div class="form-group">
+                <label for="username">
+                    <i class="fas fa-user"></i> نام کاربری
+                </label>
+                <input type="text" id="username" name="username" 
+                    class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">
+                    <i class="fas fa-envelope"></i> ایمیل
+                </label>
+                <input type="email" id="email" name="email" 
+                    class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">
+                    <i class="fas fa-lock"></i> رمز عبور
+                </label>
+                <input type="password" id="password" name="password" 
+                    class="form-control" required>
+            </div>
+            
+            <button type="submit" class="btn btn-success btn-block">
+                <i class="fas fa-user-plus"></i> ثبت نام
+            </button>
+        </form>
+        
+        <div class="auth-links">
+            <p>قبلاً ثبت نام کرده‌اید؟ 
+                <a href="{{ url_for('login') }}">وارد شوید</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

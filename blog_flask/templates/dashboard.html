@@ -1,12 +1,335 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>داشبورد</title>
-</head>
-<body>
-    <h1>hello {{username}}</h1>
-    <p style="color: rebeccapurple;">به داشبورد مدیریتی خود خوش آمدید</p>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}داشبورد - {{ user.username }}{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1><i class="fas fa-user-circle"></i> داشبورد کاربری</h1>
+    <p class="user-info">خوش آمدید {{ user.username }}!</p>
+</div>
+
+<div class="dashboard-stats">
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i class="fas fa-newspaper"></i>
+        </div>
+        <div class="stat-number">{{ posts|length }}</div>
+        <div class="stat-label">تعداد پست‌ها</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i class="fas fa-calendar-alt"></i>
+        </div>
+        <div class="stat-number">{{ user.created_at|default('امروز') }}</div>
+        <div class="stat-label">تاریخ عضویت</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i class="fas fa-envelope"></i>
+        </div>
+        <div class="stat-number">{{ user.email }}</div>
+        <div class="stat-label">ایمیل</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i class="fas fa-chart-line"></i>
+        </div>
+        <div class="stat-number">
+            {% set total_comments = namespace(count=0) %}
+            {% for post in posts %}
+                {% set total_comments.count = total_comments.count + post.comments|length %}
+            {% endfor %}
+            {{ total_comments.count }}
+        </div>
+        <div class="stat-label">مجموع نظرات</div>
+    </div>
+</div>
+
+<div class="dashboard-actions">
+    <a href="{{ url_for('create_post') }}" class="btn btn-success">
+        <i class="fas fa-plus-circle"></i> ایجاد پست جدید
+    </a>
+    <a href="{{ url_for('index') }}" class="btn btn-primary">
+        <i class="fas fa-home"></i> بازگشت به خانه
+    </a>
+    <a href="{{ url_for('logout') }}" class="btn btn-danger">
+        <i class="fas fa-sign-out-alt"></i> خروج
+    </a>
+</div>
+
+<div class="user-posts">
+    <h2 class="section-title">
+        <i class="fas fa-file-alt"></i> پست‌های شما
+    </h2>
+    
+    {% if posts %}
+        <div class="posts-list">
+            {% for post in posts %}
+            <div class="card post-card user-post">
+                <div class="post-header">
+                    <h3 class="post-title">{{ post.title }}</h3>
+                    <div class="post-meta">
+                        <span class="post-date">
+                            <i class="far fa-calendar"></i> 
+                            {{ post.created_at.strftime('%Y/%m/%d - %H:%M') }}
+                        </span>
+                        <span class="post-comments">
+                            <i class="far fa-comment"></i>
+                            {{ post.comments|length }} نظر
+                        </span>
+                        <span class="post-status">
+                            {% if post.created_at > now %}
+                                <i class="fas fa-clock text-warning"></i> برنامه‌ریزی شده
+                            {% else %}
+                                <i class="fas fa-check-circle text-success"></i> منتشر شده
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="post-content-preview">
+                    {{ post.content[:150] }}...
+                </div>
+                
+                <div class="post-actions">
+                    <a href="{{ url_for('post_detail', id=post.id) }}" 
+                    class="btn btn-primary btn-small">
+                        <i class="fas fa-eye"></i> مشاهده
+                    </a>
+                    
+                    <a href="{{ url_for('edit_post', id=post.id) }}" 
+                    class="btn btn-warning btn-small">
+                        <i class="fas fa-edit"></i> ویرایش
+                    </a>
+                    
+                    <a href="{{ url_for('delete_post', id=post.id) }}" 
+                    class="btn btn-danger btn-small"
+                    onclick="return confirm('آیا از حذف این پست مطمئن هستید؟')">
+                        <i class="fas fa-trash"></i> حذف
+                    </a>
+                    
+                    <button class="btn btn-info btn-small stats-btn"
+                            onclick="showPostStats({{ post.id }})">
+                        <i class="fas fa-chart-bar"></i> آمار
+                    </button>
+                </div>
+                
+                <!-- آمار پست (مخفی) -->
+                <div class="post-stats" id="stats-{{ post.id }}" style="display: none;">
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">تاریخ ایجاد:</span>
+                            <span class="stat-value">{{ post.created_at.strftime('%Y/%m/%d') }}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">تعداد نظرات:</span>
+                            <span class="stat-value">{{ post.comments|length }}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">آخرین ویرایش:</span>
+                            <span class="stat-value">{% if post.updated_at %}{{ post.updated_at.strftime('%Y/%m/%d') }}{% else %}--{% endif %}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">طول محتوا:</span>
+                            <span class="stat-value">{{ post.content|length }} کاراکتر</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">
+                <i class="fas fa-file-alt fa-4x"></i>
+            </div>
+            <h3>هنوز پستی ایجاد نکرده‌اید!</h3>
+            <p>اولین پست خود را ایجاد کنید و دانش خود را به اشتراک بگذارید.</p>
+            <a href="{{ url_for('create_post') }}" class="btn btn-success">
+                <i class="fas fa-plus-circle"></i> ایجاد اولین پست
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    .dashboard-header {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        color: white;
+        padding: 40px 30px;
+        border-radius: var(--border-radius);
+        margin-bottom: 30px;
+        text-align: center;
+        box-shadow: var(--box-shadow);
+    }
+    
+    .dashboard-header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+    }
+    
+    .user-info {
+        font-size: 1.2rem;
+        opacity: 0.9;
+    }
+    
+    .dashboard-actions {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 40px;
+        flex-wrap: wrap;
+    }
+    
+    .section-title {
+        color: var(--primary);
+        font-size: 1.8rem;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f0f0f0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .user-posts {
+        margin-top: 40px;
+    }
+    
+    .posts-list {
+        display: flex;
+        flex-direction: column;
+        gap: 25px;
+    }
+    
+    .user-post {
+        transition: all 0.3s ease;
+    }
+    
+    .user-post:hover {
+        transform: translateX(5px);
+    }
+    
+    .post-content-preview {
+        color: var(--gray);
+        line-height: 1.8;
+        margin: 20px 0;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border-right: 3px solid var(--primary);
+    }
+    
+    .post-stats {
+        margin-top: 20px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        border-top: 2px solid var(--primary);
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+    }
+    
+    .stat-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    
+    .stat-label {
+        font-weight: bold;
+        color: var(--dark);
+    }
+    
+    .stat-value {
+        color: var(--primary);
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+    }
+    
+    .empty-icon {
+        margin-bottom: 25px;
+        color: var(--primary);
+    }
+    
+    .empty-state h3 {
+        color: var(--dark);
+        margin-bottom: 15px;
+        font-size: 1.5rem;
+    }
+    
+    .empty-state p {
+        color: var(--gray);
+        margin-bottom: 30px;
+        font-size: 1.1rem;
+    }
+    
+    @media (max-width: 768px) {
+        .dashboard-stats {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .post-actions {
+            flex-direction: column;
+        }
+        
+        .post-actions .btn {
+            width: 100%;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .dashboard-stats {
+            grid-template-columns: 1fr;
+        }
+        
+        .dashboard-actions {
+            flex-direction: column;
+        }
+        
+        .dashboard-actions .btn {
+            width: 100%;
+        }
+    }
+</style>
+
+<script>
+    function showPostStats(postId) {
+        const statsDiv = document.getElementById(`stats-${postId}`);
+        const isVisible = statsDiv.style.display === 'block';
+        
+        // مخفی کردن همه آمار
+        document.querySelectorAll('.post-stats').forEach(div => {
+            div.style.display = 'none';
+        });
+        
+        // نمایش آمار مورد نظر
+        if (!isVisible) {
+            statsDiv.style.display = 'block';
+        }
+    }
+    
+    // تغییر رنگ دکمه آمار فعال
+    function toggleStatsButton(btn) {
+        document.querySelectorAll('.stats-btn').forEach(button => {
+            button.classList.remove('active');
+        });
+        btn.classList.toggle('active');
+    }
+</script>
+{% endblock %}

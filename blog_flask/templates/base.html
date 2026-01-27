@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}وبلاگ من{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- نوار ناوبری -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="{{ url_for('index') }}" class="logo">
+                <i class="fas fa-blog"></i> وبلاگ من
+            </a>
+            <div class="nav-links">
+                <a href="{{ url_for('index') }}" class="nav-link {{ 'active' if request.endpoint == 'index' }}">
+                    <i class="fas fa-home"></i> خانه
+                </a>
+                
+                {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('dashboard') }}" class="nav-link {{ 'active' if request.endpoint == 'dashboard' }}">
+                        <i class="fas fa-user"></i> داشبورد
+                    </a>
+                    <a href="{{ url_for('create_post') }}" class="nav-link btn-new-post {{ 'active' if request.endpoint == 'create_post' }}">
+                        <i class="fas fa-plus"></i> پست جدید
+                    </a>
+                    <a href="{{ url_for('logout') }}" class="nav-link btn-logout">
+                        <i class="fas fa-sign-out-alt"></i> خروج
+                    </a>
+                    <span class="user-welcome">
+                        <i class="fas fa-user-circle"></i> {{ current_user.username }}
+                    </span>
+                {% else %}
+                    <a href="{{ url_for('login') }}" class="nav-link btn-login {{ 'active' if request.endpoint == 'login' }}">
+                        <i class="fas fa-sign-in-alt"></i> ورود
+                    </a>
+                    <a href="{{ url_for('register') }}" class="nav-link btn-register {{ 'active' if request.endpoint == 'register' }}">
+                        <i class="fas fa-user-plus"></i> ثبت نام
+                    </a>
+                {% endif %}
+            </div>
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+
+        <!-- منوی موبایل -->
+        <div class="mobile-menu" id="mobileMenu">
+            <a href="{{ url_for('index') }}" class="mobile-nav-link">
+                <i class="fas fa-home"></i> خانه
+            </a>
+            
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('dashboard') }}" class="mobile-nav-link">
+                    <i class="fas fa-user"></i> داشبورد
+                </a>
+                <a href="{{ url_for('create_post') }}" class="mobile-nav-link">
+                    <i class="fas fa-plus"></i> پست جدید
+                </a>
+                <a href="{{ url_for('logout') }}" class="mobile-nav-link">
+                    <i class="fas fa-sign-out-alt"></i> خروج
+                </a>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="mobile-nav-link">
+                    <i class="fas fa-sign-in-alt"></i> ورود
+                </a>
+                <a href="{{ url_for('register') }}" class="mobile-nav-link">
+                    <i class="fas fa-user-plus"></i> ثبت نام
+                </a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <!-- پیام‌های فلش -->
+    <div class="flash-messages">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash flash-{{ category }}">
+                        <i class="fas 
+                            {% if category == 'success' %}fa-check-circle
+                            {% elif category == 'danger' %}fa-exclamation-circle
+                            {% elif category == 'warning' %}fa-exclamation-triangle
+                            {% else %}fa-info-circle{% endif %}">
+                        </i>
+                        {{ message }}
+                        <button class="flash-close" onclick="this.parentElement.remove()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- محتوای اصلی -->
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- فوتر -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3><i class="fas fa-blog"></i> وبلاگ من</h3>
+                    <p>مکانی برای به اشتراک گذاری دانش و تجربیات</p>
+                </div>
+                <div class="footer-section">
+                    <h3>لینک‌های سریع</h3>
+                    <a href="{{ url_for('index') }}">خانه</a>
+                    {% if current_user.is_authenticated %}
+                        <a href="{{ url_for('dashboard') }}">داشبورد</a>
+                        <a href="{{ url_for('create_post') }}">ایجاد پست</a>
+                    {% endif %}
+                </div>
+                <div class="footer-section">
+                    <h3>ارتباط با ما</h3>
+                    <p><i class="fas fa-envelope"></i> contact@myblog.com</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>© 2024 وبلاگ من. تمامی حقوق محفوظ است.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        // بستن خودکار پیام‌ها
+        setTimeout(() => {
+            const flashes = document.querySelectorAll('.flash');
+            flashes.forEach(flash => {
+                flash.style.opacity = '0';
+                setTimeout(() => flash.remove(), 300);
+            });
+        }, 5000);
+        
+        // منوی موبایل
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+        
+        // بستن منوی موبایل هنگام کلیک روی لینک
+        document.querySelectorAll('.mobile-nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                document.getElementById('mobileMenu').style.display = 'none';
+            });
+        });
+        
+        // بستن منو هنگام کلیک خارج از منو
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('mobileMenu');
+            const btn = document.querySelector('.mobile-menu-btn');
+            if (!menu.contains(e.target) && !btn.contains(e.target)) {
+                menu.style.display = 'none';
+            }
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

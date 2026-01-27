@@ -1,21 +1,39 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ایجاد مقاله جدید</title>
-</head>
-<body>
-    <h1>ایجاد مقاله</h1>
+{% extends "base.html" %}
 
-    <form action="" method="post">
-        <label>عنوان :</label>
-        <input type="text" name="title" required><br><br>
+{% block title %}ایجاد پست جدید - وبلاگ من{% endblock %}
 
-        <label>محتوا :</label>
-        <textarea name="content" cols="5" rows="50"></textarea>
-
-        <button type="submit">ایجاد پست</button>
-    </form>
-</body>
-</html>
+{% block content %}
+<div class="form-container">
+    <div class="card">
+        <h2 style="color: var(--primary); margin-bottom: 30px;">
+            <i class="fas fa-edit"></i> ایجاد پست جدید
+        </h2>
+        
+        <form method="POST" action="{{ url_for('create_post') }}">
+            <div class="form-group">
+                <label for="title">عنوان پست:</label>
+                <input type="text" id="title" name="title" 
+                       class="form-control" placeholder="عنوان جذاب انتخاب کنید..." 
+                       required>
+            </div>
+            
+            <div class="form-group">
+                <label for="content">محتوا:</label>
+                <textarea id="content" name="content" 
+                          class="form-control" rows="10"
+                          placeholder="محتوا را اینجا بنویسید..." 
+                          required></textarea>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-paper-plane"></i> انتشار پست
+                </button>
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> انصراف
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

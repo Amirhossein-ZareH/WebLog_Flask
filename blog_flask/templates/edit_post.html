@@ -1,21 +1,373 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ویرایش مقاله جدید</title>
-</head>
-<body>
-    <h1>ویرایش مقاله</h1>
+{% extends "base.html" %}
 
-    <form action="" method="post">
-        <label>عنوان :</label>
-        <input type="text" name="title" required><br><br>
+{% block title %}ویرایش پست - {{ post.title }}{% endblock %}
 
-        <label>محتوا :</label>
-        <textarea name="content" cols="5" rows="50"></textarea>
+{% block content %}
+<div class="form-container">
+    <div class="card">
+        <div class="edit-header">
+            <h2>
+                <i class="fas fa-edit"></i> ویرایش پست
+            </h2>
+            <div class="post-info">
+                <span class="info-item">
+                    <i class="far fa-calendar"></i>
+                    ایجاد: {{ post.created_at.strftime('%Y/%m/%d') }}
+                </span>
+                <span class="info-item">
+                    <i class="fas fa-user"></i>
+                    نویسنده: {{ post.author.username }}
+                </span>
+                <span class="info-item">
+                    <i class="far fa-comment"></i>
+                    نظرات: {{ post.comments|length }}
+                </span>
+            </div>
+        </div>
+        
+        <form method="POST">
+            <div class="form-group">
+                <label for="title">
+                    <i class="fas fa-heading"></i> عنوان پست
+                </label>
+                <input type="text" id="title" name="title" 
+                    class="form-control" 
+                    value="{{ post.title }}"
+                    placeholder="عنوان جدید را وارد کنید..." 
+                    required>
+            </div>
+            
+            <div class="form-group">
+                <label for="content">
+                    <i class="fas fa-align-left"></i> محتوا
+                </label>
+                <textarea id="content" name="content" 
+                        class="form-control editor"
+                        rows="15"
+                        placeholder="محتوا را ویرایش کنید..." 
+                        required>{{ post.content }}</textarea>
+                
+                <div class="editor-tools">
+                    <small class="char-count">
+                        <span id="charCount">{{ post.content|length }}</span> کاراکتر
+                    </small>
+                    <div class="format-buttons">
+                        <button type="button" class="format-btn" onclick="formatText('bold')">
+                            <i class="fas fa-bold"></i>
+                        </button>
+                        <button type="button" class="format-btn" onclick="formatText('italic')">
+                            <i class="fas fa-italic"></i>
+                        </button>
+                        <button type="button" class="format-btn" onclick="formatText('link')">
+                            <i class="fas fa-link"></i>
+                        </button>
+                        <button type="button" class="format-btn" onclick="formatText('code')">
+                            <i class="fas fa-code"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <div class="action-buttons">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save"></i> ذخیره تغییرات
+                    </button>
+                    
+                    <a href="{{ url_for('post_detail', id=post.id) }}" 
+                    class="btn btn-primary">
+                        <i class="fas fa-eye"></i> پیش‌نمایش
+                    </a>
+                    
+                    <a href="{{ url_for('index') }}" 
+                    class="btn btn-secondary">
+                        <i class="fas fa-times"></i> لغو
+                    </a>
+                </div>
+                
+                <div class="danger-zone">
+                    <a href="{{ url_for('delete_post', id=post.id) }}" 
+                    class="btn btn-danger"
+                    onclick="return confirm('⚠️ اخطار! این عمل غیرقابل بازگشت است.\nآیا مطمئن هستید که می‌خواهید این پست را حذف کنید؟')">
+                        <i class="fas fa-trash"></i> حذف پست
+                    </a>
+                </div>
+            </div>
+        </form>
+        
+        <div class="preview-section" style="display: none;">
+            <h3><i class="fas fa-eye"></i> پیش‌نمایش</h3>
+            <div class="preview-content" id="previewContent"></div>
+        </div>
+    </div>
+    
+    <!-- جزئیات پست -->
+    <div class="card post-details">
+        <h3><i class="fas fa-info-circle"></i> جزئیات پست</h3>
+        <div class="details-grid">
+            <div class="detail-item">
+                <span class="detail-label">آیدی پست:</span>
+                <span class="detail-value">{{ post.id }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">تاریخ ایجاد:</span>
+                <span class="detail-value">{{ post.created_at.strftime('%Y/%m/%d %H:%M') }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">آخرین ویرایش:</span>
+                <span class="detail-value">{{ post.created_at.strftime('%Y/%m/%d %H:%M') }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">تعداد نظرات:</span>
+                <span class="detail-value">{{ post.comments|length }}</span>
+            </div>
+        </div>
+    </div>
+</div>
 
-        <button type="submit">ویرایش پست</button>
-    </form>
-</body>
-</html>
+<style>
+    .edit-header {
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+    
+    .edit-header h2 {
+        color: var(--primary);
+        font-size: 1.8rem;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .post-info {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+        color: var(--gray);
+        font-size: 0.9rem;
+    }
+    
+    .info-item {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        background: #f8f9fa;
+        padding: 8px 15px;
+        border-radius: 20px;
+    }
+    
+    .editor-tools {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 15px;
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+    
+    .char-count {
+        color: var(--gray);
+        font-weight: bold;
+    }
+    
+    .format-buttons {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .format-btn {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 5px 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .format-btn:hover {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+    
+    .form-actions {
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 2px solid #f0f0f0;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+    
+    .danger-zone {
+        padding: 20px;
+        background: linear-gradient(135deg, rgba(247, 37, 133, 0.1) 0%, rgba(181, 23, 158, 0.1) 100%);
+        border-radius: var(--border-radius);
+        border: 2px dashed var(--danger);
+    }
+    
+    .preview-section {
+        margin-top: 40px;
+        padding: 25px;
+        background: #f8f9fa;
+        border-radius: var(--border-radius);
+    }
+    
+    .preview-section h3 {
+        color: var(--primary);
+        margin-bottom: 20px;
+        font-size: 1.5rem;
+    }
+    
+    .preview-content {
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #ddd;
+        line-height: 1.8;
+        min-height: 200px;
+    }
+    
+    .post-details {
+        margin-top: 30px;
+    }
+    
+    .post-details h3 {
+        color: var(--primary);
+        margin-bottom: 20px;
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+    }
+    
+    .detail-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border-right: 3px solid var(--primary);
+    }
+    
+    .detail-label {
+        font-weight: bold;
+        color: var(--dark);
+    }
+    
+    .detail-value {
+        color: var(--primary);
+        font-family: monospace;
+    }
+    
+    @media (max-width: 768px) {
+        .action-buttons {
+            flex-direction: column;
+        }
+        
+        .action-buttons .btn {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .post-info {
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .editor-tools {
+            flex-direction: column;
+            gap: 15px;
+            align-items: flex-start;
+        }
+        
+        .details-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<script>
+    // شمارش کاراکترها
+    const contentTextarea = document.getElementById('content');
+    const charCount = document.getElementById('charCount');
+    
+    contentTextarea.addEventListener('input', function() {
+        charCount.textContent = this.value.length;
+    });
+    
+    // ابزارهای فرمت‌دهی
+    function formatText(command) {
+        const textarea = document.getElementById('content');
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = textarea.value.substring(start, end);
+        
+        let formattedText = '';
+        
+        switch(command) {
+            case 'bold':
+                formattedText = `**${selectedText}**`;
+                break;
+            case 'italic':
+                formattedText = `*${selectedText}*`;
+                break;
+            case 'link':
+                const url = prompt('لینک را وارد کنید:', 'https://');
+                if (url) {
+                    formattedText = `[${selectedText}](${url})`;
+                } else {
+                    return;
+                }
+                break;
+            case 'code':
+                formattedText = '```\n' + selectedText + '\n```';
+                break;
+        }
+        
+        // جایگزینی متن انتخاب شده
+        textarea.value = textarea.value.substring(0, start) + 
+                        formattedText + 
+                        textarea.value.substring(end);
+        
+        // به روزرسانی شمارش کاراکتر
+        charCount.textContent = textarea.value.length;
+        
+        // بازگشت فوکوس به جایی که بود
+        textarea.focus();
+        textarea.setSelectionRange(start + formattedText.length, start + formattedText.length);
+    }
+    
+    // پیش‌نمایش
+    function showPreview() {
+        const content = document.getElementById('content').value;
+        const previewContent = document.getElementById('previewContent');
+        const previewSection = document.querySelector('.preview-section');
+        
+        // تبدیل مارک‌داون به HTML ساده
+        let html = content
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>')
+            .replace(/```\n?([\s\S]*?)\n?```/g, '<pre><code>$1</code></pre>')
+            .replace(/\n/g, '<br>');
+        
+        previewContent.innerHTML = html;
+        previewSection.style.display = 'block';
+        previewSection.scrollIntoView({ behavior: 'smooth' });
+    }
+</script>
+{% endblock %}
