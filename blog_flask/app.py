@@ -1,10 +1,11 @@
-from flask import Flask , render_template , request , flash , redirect , url_for
+from flask import Flask, render_template, request, flash, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-from werkzeug.security import generate_password_hash , check_password_hash
-from flask_login import LoginManager , login_user , logout_user , login_required , current_user , UserMixin
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
+import os
 
-app = Flask(__name__,template_folder="templates")
+app = Flask(__name__, template_folder="templates")
 
 app.config["SECRET_KEY"] = "zsedguihionjojinmjkpkmkm4784868448476y673sw3w4342"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///blog.db"
@@ -17,36 +18,37 @@ login_manager.init_app(app)
 login_manager.login_view = "login"
 login_manager.login_message = "برای دسترسی به این صفحه باید به حساب کاربری خود وارد شوید"
 
+
+# ========== مدل‌های دیتابیس ==========
+
 class User(UserMixin, db.Model):
-    id = db.Column(db.Integer , primary_key=True)
-    username = db.Column(db.String(80) , unique = True , nullable=False)
-    email = db.Column(db.String(120) , unique =  True , nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(120), nullable=False)
-    posts = db.relationship("Post" , backref = "author_rel" , lazy = True)  # تغییر نام backref
-    comments = db.relationship("Comment" , backref = "author_rel" , lazy = True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    
+    # روابط
+    posts = db.relationship("Post", backref="author", lazy=True, cascade='all, delete-orphan')
+    comments = db.relationship("Comment", backref="author", lazy=True, cascade='all, delete-orphan')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
         
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+    
+    def __repr__(self):
+        return f'<User {self.username}>'
 
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
 
 class Post(db.Model):
-    __tablename__ = 'posts'
-    
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    author_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # اصلاح شد به 'user.id'
+    author_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
-    
-    # رابطه با کاربر
-    author = db.relationship('User', backref=db.backref('user_posts', lazy=True))
     
     # رابطه با نظرات
     comments = db.relationship('Comment', backref='post', lazy=True, cascade='all, delete-orphan')
@@ -54,35 +56,50 @@ class Post(db.Model):
     def __repr__(self):
         return f'<Post {self.title}>'
 
+
 class Comment(db.Model):
-    __tablename__ = 'comments'  # اضافه کردن نام جدول
-    id = db.Column(db.Integer , primary_key=True)
-    content = db.Column(db.Text , nullable=False)
-    created_at = db.Column(db.DateTime , nullable = False , default=datetime.utcnow)
-    user_id = db.Column(db.Integer , db.ForeignKey("user.id") , nullable = False)  # اصلاح به user.id
-    post_id = db.Column(db.Integer , db.ForeignKey("posts.id") , nullable = False)  # اصلاح به posts.id
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey("post.id"), nullable=False)
     
-    # رابطه با کاربر
-    author = db.relationship('User', backref=db.backref('user_comments', lazy=True))
+    def __repr__(self):
+        return f'<Comment by {self.author.username if self.author else "Unknown"}>'
+
+
+# ========== user_loader ==========
+@login_manager.user_loader
+def load_user(user_id):
+    """بارگذاری کاربر از روی ID ذخیره شده در سشن"""
+    return User.query.get(int(user_id))
+
+
+# ========== مسیرها (Routes) ==========
 
 @app.route('/')
 def index():
     posts = Post.query.order_by(Post.created_at.desc()).all()
-    return render_template("index.html", posts = posts)
+    return render_template("index.html", posts=posts)
 
-@app.route('/register' , methods=["GET", "POST"])
+
+@app.route('/register', methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
-        email = request.form["email"]
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+        email = request.form.get("email", "").strip()
+    
+        if not username or not password or not email:
+            flash("تمامی فیلدها الزامی هستند", "danger")
+            return render_template("register.html")
     
         if User.query.filter_by(username=username).first():
-            flash("نام کاربری قبلا استفاده شده است" , "danger")
+            flash("نام کاربری قبلا استفاده شده است", "danger")
             return render_template("register.html")
         
         if User.query.filter_by(email=email).first():
-            flash("این ایمیل قبلا استفاده شده است" , "danger")
+            flash("این ایمیل قبلا استفاده شده است", "danger")
             return render_template("register.html")
     
         user = User(username=username, email=email)
@@ -94,17 +111,19 @@ def register():
     
     return render_template("register.html")
 
+
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    user_posts = Post.query.filter_by(author_id=current_user.id).order_by(Post.created_at.desc()).all()  # اصلاح به author_id
-    return render_template("dashboard.html" , user=current_user, posts=user_posts)
+    user_posts = Post.query.filter_by(author_id=current_user.id).order_by(Post.created_at.desc()).all()
+    return render_template("dashboard.html", user=current_user, posts=user_posts)
 
-@app.route('/login' , methods=["GET", "POST"])
+
+@app.route('/login', methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
         
         user = User.query.filter_by(username=username).first()
         if user and user.check_password(password):
@@ -113,7 +132,9 @@ def login():
             return redirect(url_for("dashboard"))
         else:
             flash("نام کاربری یا رمزعبور اشتباه است", "danger")
+    
     return render_template("login.html")
+
 
 @app.route("/logout")
 @login_required
@@ -122,7 +143,8 @@ def logout():
     flash("با موفقیت خارج شدید", "success")
     return redirect(url_for("index"))
 
-@app.route('/create_post' , methods=["GET", "POST"])
+
+@app.route('/create_post', methods=["GET", "POST"])
 @login_required
 def create_post():
     if request.method == "POST":
@@ -130,22 +152,24 @@ def create_post():
         content = request.form.get("content", "").strip()
         
         if not title or not content:
-            flash("عنوان و محتوا الزامی میباشد!!!", "danger")
+            flash("عنوان و محتوا الزامی می‌باشد", "danger")
             return render_template("create_post.html")
         
-        post = Post(title=title, content=content, author_id=current_user.id)  # اصلاح به author_id
+        post = Post(title=title, content=content, author_id=current_user.id)
         db.session.add(post)
         db.session.commit()
         flash("مقاله شما با موفقیت ذخیره شد", "success")
         return redirect(url_for("index"))
+    
     return render_template('create_post.html')
 
-@app.route('/edit_post/<int:id>' , methods=["GET", "POST"])
+
+@app.route('/edit_post/<int:id>', methods=["GET", "POST"])
 @login_required
 def edit_post(id):
     post = Post.query.get_or_404(id)
     
-    if post.author_id != current_user.id:  # اصلاح به author_id
+    if post.author_id != current_user.id:
         flash("شما اجازه ویرایش این پست را ندارید", "danger")
         return redirect(url_for("index"))
     
@@ -154,29 +178,33 @@ def edit_post(id):
         content = request.form.get("content", "").strip()
         
         if not title or not content:
-            flash("عنوان و محتوا الزامی میباشد!!!", "danger")
+            flash("عنوان و محتوا الزامی می‌باشد", "danger")
             return render_template("edit_post.html", post=post)
         
         post.title = title
         post.content = content
+        post.updated_at = datetime.now()
         db.session.commit()
         flash("مقاله شما با موفقیت ویرایش شد", "success")
         return redirect(url_for("index"))
     
     return render_template("edit_post.html", post=post)
 
+
 @app.route("/delete_post/<int:id>")
 @login_required
 def delete_post(id):
     post = Post.query.get_or_404(id)
-    if post.author_id != current_user.id:  # اصلاح به author_id
-        flash("شما دسترسی لازم برای حذف این مقاله را ندارید !!!", "danger")
+    
+    if post.author_id != current_user.id:
+        flash("شما دسترسی لازم برای حذف این مقاله را ندارید", "danger")
         return redirect(url_for("index"))
     
     db.session.delete(post)
     db.session.commit()
     flash("مقاله شما با موفقیت حذف شد", "success")
     return redirect(url_for("index"))
+
 
 @app.route("/post/<int:id>", methods=["GET", "POST"])
 def post_detail(id):
@@ -199,7 +227,10 @@ def post_detail(id):
         return redirect(url_for("post_detail", id=id))
     
     comments = Comment.query.filter_by(post_id=id).order_by(Comment.created_at.desc()).all()
-    return render_template("post_detail.html", post=post, comments=comments)
+    # برای پست‌های مرتبط
+    related_posts = Post.query.filter(Post.author_id == post.author_id, Post.id != id).limit(3).all()
+    return render_template("post_detail.html", post=post, comments=comments, posts=related_posts)
+
 
 @app.route("/delete_comment/<int:id>")
 @login_required
@@ -216,12 +247,46 @@ def delete_comment(id):
     flash("نظر شما حذف شد", "success")
     return redirect(url_for("post_detail", id=post_id))
 
+
+# ========== توابع کمکی ==========
+
 def create_tables():
+    """ایجاد دیتابیس و جداول"""
     with app.app_context():
         db.create_all()
-        
+        print("✅ دیتابیس با موفقیت ساخته شد!")
 
+
+def init_db():
+    """راه‌اندازی دیتابیس - حذف و بازسازی در صورت نیاز"""
+    with app.app_context():
+        db_path = 'blog.db'
+        db_exists = os.path.exists(db_path)
+        
+        if db_exists:
+            # بررسی وجود ستون‌های مورد نیاز
+            import sqlite3
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            
+            # بررسی وجود ستون author_id در جدول post
+            cursor.execute("PRAGMA table_info(post)")
+            columns = [column[1] for column in cursor.fetchall()]
+            conn.close()
+            
+            if 'author_id' not in columns:
+                print("⚠️ در حال بازسازی دیتابیس...")
+                db.drop_all()
+                db.create_all()
+                print("✅ دیتابیس با موفقیت بازسازی شد!")
+            else:
+                print("✅ دیتابیس به‌روز است.")
+        else:
+            db.create_all()
+            print("✅ دیتابیس جدید ساخته شد!")
+
+
+# ========== اجرای برنامه ==========
 if __name__ == "__main__":
-    create_tables()
+    init_db()
     app.run(debug=True)
-    
